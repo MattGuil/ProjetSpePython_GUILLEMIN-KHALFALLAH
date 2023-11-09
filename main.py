@@ -24,13 +24,13 @@ reddit = praw.Reddit(
 
 # Requête
 limit = 5
-dvr_hottest_post = reddit.subreddit(subject).hot(limit=limit)
+hottest_post = reddit.subreddit(subject).hot(limit=limit)
 
 # Récupération du texte
 docs = []
 docs_bruts = []
 afficher_cles = False
-for i, post in enumerate(dvr_hottest_post):
+for i, post in enumerate(hottest_post):
     print("Reddit:", i + 1, "/", limit)
     if afficher_cles:
         for key, value in post.__dict__.items():
