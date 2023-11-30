@@ -1,3 +1,4 @@
-# Projet Spécialité Python - Matthieu GUILLEMIN, Elyes KHAFALLAH
+# Projet Spécialité Python
+## Matthieu GUILLEMIN, Elyes KHAFALLAH
 
 A remplir
