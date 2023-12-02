@@ -50,7 +50,3 @@ class Corpus:
         
         self.ndoc += 1
         self.id2doc[self.ndoc] = doc
-
-    @staticmethod
-    def reset(self):
-        Corpus._instance = None
