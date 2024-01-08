@@ -8,6 +8,7 @@ import xmltodict
 
 from datetime import datetime
 import pickle
+import math
 
 from Document import *
 from Author import *
@@ -65,135 +66,138 @@ class Corpus:
             with open(f"pickles/{subject}.pkl", "rb") as f:
                 corpus = pickle.load(f)
 
-            corpus.show(tri="123")
-            print("\n\n")
-            print(f"Nombre de documents : {corpus.ndoc}")
-            print(f"Nombre d'auteurs : {corpus.naut}")
+            if corpus.ndoc == nb_articles:
+                corpus.show(tri="123")
+                print("\n\n")
+                print(f"Nombre de documents : {corpus.ndoc}")
+                print(f"Nombre d'auteurs : {corpus.naut}")
+                pass
+        
+        nb_articles = math.floor(nb_articles / 2)
 
-        else:    
+        # ==== REDDIT ====
 
-            # ==== REDDIT ====
+        # Identification
+        reddit = praw.Reddit(
+            client_id = '-w5bIuuQGmj47u4g_BWjkg',
+            client_secret = 'ac-sSsGg9sTsRM3SqFlZN5EjUH-JOQ',
+            user_agent = 'R-WebScraping'
+        )
 
-            # Identification
-            reddit = praw.Reddit(
-                client_id = '-w5bIuuQGmj47u4g_BWjkg',
-                client_secret = 'ac-sSsGg9sTsRM3SqFlZN5EjUH-JOQ',
-                user_agent = 'R-WebScraping'
-            )
+        # Requête
+        hottest_post = reddit.subreddit(''.join(subject.split())).hot(limit=nb_articles)
 
-            # Requête
-            hottest_post = reddit.subreddit(''.join(subject.split())).hot(limit=nb_articles+1)
+        # Récupération du texte
+        afficher_cles = False
+        for post in hottest_post:
+            if afficher_cles:
+                for key, value in post.__dict__.items():
+                    print(key, " : ", value)
 
-            # Récupération du texte
-            afficher_cles = False
-            for post in hottest_post:
-                if afficher_cles:
-                    for key, value in post.__dict__.items():
-                        print(key, " : ", value)
+            if post.selftext != "":
+                pass
 
-                if post.selftext != "":
-                    pass
+            self.docs.append(post.selftext.replace("\n", " "))
+            self.docs_bruts.append(("Reddit", post))
 
-                self.docs.append(post.selftext.replace("\n", " "))
-                self.docs_bruts.append(("Reddit", post))
+        # ==== ARXIV ====
 
-            # ==== ARXIV ====
+        query = quote(subject)
 
-            query = quote(subject)
+        url = f"http://export.arxiv.org/api/query?search_query={query}&max_results={nb_articles}"
 
-            url = f"http://export.arxiv.org/api/query?search_query={query}&max_results={nb_articles}"
+        response = urllib.request.urlopen(url).read()
+        data = response.decode("utf-8")
+        data = xmltodict.parse(data)["feed"]["entry"]
 
-            response = urllib.request.urlopen(url).read()
-            data = response.decode("utf-8")
-            data = xmltodict.parse(data)["feed"]["entry"]
+        for entry in data:
+            self.docs.append(entry["summary"].replace("\n", " "))
+            self.docs_bruts.append(("ArXiv", entry))
 
-            for entry in data:
-                self.docs.append(entry["summary"].replace("\n", " "))
-                self.docs_bruts.append(("ArXiv", entry))
+        # ==== NETTOYAGE ====
 
-            # ==== NETTOYAGE ====
+        '''
+        for doc in self.docs:
+            if len(doc) < 20:
+                self.docs.remove(doc)
+        '''
 
-            '''
-            for doc in self.docs:
-                if len(doc) < 20:
-                    self.docs.remove(doc)
-            '''
+        # ==== MANIPULATIONS ====
 
-            # ==== MANIPULATIONS ====
+        for nature, doc in self.docs_bruts:
+            if nature == "Reddit":
+                doc_info = (
+                    doc.title.replace("\n", ""),
+                    datetime.fromtimestamp(doc.created).strftime("%Y/%m/%d"),
+                    "Reddit",
+                    "https://www.reddit.com/" + doc.permalink,
+                    doc.selftext.replace("\n", ""),
+                    str(doc.author),
+                    doc.num_comments
+                )
+            elif nature == "ArXiv":
+                try:
+                    auteurs = ", ".join([a["name"] for a in doc["author"]])
+                except:
+                    auteurs = doc["author"]["name"]
+                
+                doc_info = (
+                    doc["title"].replace("\n", ""),
+                    datetime.strptime(doc["published"], "%Y-%m-%dT%H:%M:%SZ").strftime("%Y/%m/%d"),
+                    "ArXiv",
+                    doc["id"],
+                    doc["summary"].replace("\n", ""),
+                    auteurs,
+                )
+            else:
+                continue
 
-            for nature, doc in self.docs_bruts:
-                if nature == "Reddit":
-                    doc_info = (
-                        doc.title.replace("\n", ""),
-                        datetime.fromtimestamp(doc.created).strftime("%Y/%m/%d"),
-                        "Reddit",
-                        "https://www.reddit.com/" + doc.permalink,
-                        doc.selftext.replace("\n", ""),
-                        str(doc.author),
-                        doc.num_comments
-                    )
-                elif nature == "ArXiv":
-                    try:
-                        auteurs = ", ".join([a["name"] for a in doc["author"]])
-                    except:
-                        auteurs = doc["author"]["name"]
-                    
-                    doc_info = (
-                        doc["title"].replace("\n", ""),
-                        datetime.strptime(doc["published"], "%Y-%m-%dT%H:%M:%SZ").strftime("%Y/%m/%d"),
-                        "ArXiv",
-                        doc["id"],
-                        doc["summary"].replace("\n", ""),
-                        auteurs,
-                    )
-                else:
-                    continue
-
-                doc_instance = DocumentFactory.create_document(nature, doc_info)
-                self.collection.append(doc_instance)
-
-
-            # Création de l'index de documents
-            id2doc = {}
-            for i, doc in enumerate(self.collection):
-                id2doc[i] = doc.titre
+            doc_instance = DocumentFactory.create_document(nature, doc_info)
+            self.collection.append(doc_instance)
 
 
-            # ==== DICT AUTEURS ====
-
-            authors = {}
-            aut2id = {}
-            num_auteurs_vus = 0
-
-            # Création de la liste + index des auteurs
-            for doc in self.collection:
-                if doc.auteur not in aut2id:
-                    num_auteurs_vus += 1
-                    authors[num_auteurs_vus] = Author(doc.auteur)
-                    aut2id[doc.auteur] = num_auteurs_vus
-
-                authors[aut2id[doc.auteur]].add(doc.texte)
+        # Création de l'index de documents
+        id2doc = {}
+        for i, doc in enumerate(self.collection):
+            id2doc[i] = doc.titre
 
 
-            # ==== CORPUS ====
+        # ==== DICT AUTEURS ====
 
-            corpus = Corpus("Mon corpus")
+        authors = {}
+        aut2id = {}
+        num_auteurs_vus = 0
 
-            for doc in self.collection:
-                corpus.add(doc)
+        # Création de la liste + index des auteurs
+        for doc in self.collection:
+            if doc.auteur not in aut2id:
+                num_auteurs_vus += 1
+                authors[num_auteurs_vus] = Author(doc.auteur)
+                aut2id[doc.auteur] = num_auteurs_vus
+
+            authors[aut2id[doc.auteur]].add(doc.texte)
 
 
-            # ==== SAUVEGARDE ====
+        # ==== CORPUS ====
 
-            with open(f"pickles/{subject}.pkl", "wb") as f:
-                pickle.dump(corpus, f)
+        corpus = Corpus("Mon corpus")
 
-            # ==== LECTURE ====
+        for doc in self.collection:
+            corpus.add(doc)
 
-            with open(f"pickles/{subject}.pkl", "rb") as f:
-                corpus = pickle.load(f)
 
-            corpus.show(tri="123")
-            print("\n\n")
-            print(f"Nombre de documents : {corpus.ndoc}")
-            print(f"Nombre d'auteurs : {corpus.naut}")
+        # ==== SAUVEGARDE ====
+
+        with open(f"pickles/{subject}.pkl", "wb") as f:
+            pickle.dump(corpus, f)
+
+        # ==== LECTURE ====
+
+        with open(f"pickles/{subject}.pkl", "rb") as f:
+            corpus = pickle.load(f)
+
+
+        corpus.show(tri="123")
+        print("\n\n")
+        print(f"Nombre de documents : {corpus.ndoc}")
+        print(f"Nombre d'auteurs : {corpus.naut}")
