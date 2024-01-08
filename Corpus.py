@@ -9,6 +9,8 @@ import xmltodict
 from datetime import datetime
 import pickle
 import math
+import re
+import pandas as pd
 
 from Document import *
 from Author import *
@@ -22,8 +24,10 @@ class Corpus:
         self.id2doc = {}
         self.ndoc = 0
         self.naut = 0
-        self.docs = []          # liste des différents textes des documents
-        self.docs_bruts = []    # liste de toutes les informations nécessaires pour créer une instance d'un object de classe Document
+        self.docs = []               # liste des différents textes des documents
+        self.concatenated_docs = ''  # chaine de caractères qui concatène l'intégralité des textes des documents
+        self.vocabulary = {}
+        self.docs_bruts = []         # liste de toutes les informations nécessaires pour créer une instance d'un object de classe Document
         self.collection = []
 
     def __repr__(self):
@@ -116,11 +120,9 @@ class Corpus:
 
         # ==== NETTOYAGE ====
 
-        '''
         for doc in self.docs:
-            if len(doc) < 20:
-                self.docs.remove(doc)
-        '''
+                if len(doc) < 20:
+                    self.docs.remove(doc)
 
         # ==== MANIPULATIONS ====
 
@@ -201,3 +203,57 @@ class Corpus:
         print("\n\n")
         print(f"Nombre de documents : {corpus.ndoc}")
         print(f"Nombre d'auteurs : {corpus.naut}")
+
+    def search(self, keyword, context_size=30):
+        if self.concatenated_docs == '':
+            self.concatenated_docs = self.nettoyer(' ` '.join(self.docs))
+        
+        pattern = re.compile(fr'\b{re.escape(keyword)}\b', re.IGNORECASE)
+        matches = pattern.finditer(self.concatenated_docs)
+        
+        data = {'contexte gauche': [], 'keyword': [], 'contexte droit': []}
+
+        for match in matches:
+            start_index = max(0, match.start() - context_size)
+            end_index = min(len(self.concatenated_docs), match.end() + context_size)
+            
+            context_left = self.concatenated_docs[start_index:match.start()]
+            context_right = self.concatenated_docs[match.end():end_index]
+
+            data['contexte gauche'].append(context_left)
+            data['keyword'].append(match.group())
+            data['contexte droit'].append(context_right)
+        
+        df = pd.DataFrame(data)
+        print(f"Nombre d'occurrences de {keyword} : {len(df)}")
+        print(df)
+        
+        return df
+    
+    def nettoyer(self, text):
+        text = text.lower()
+        text = text.replace('\n', ' ')
+        text = re.sub(r'[^a-z àáâãäåæçèéêëìíîïðòóôõöøùúûüýÿ`]', ' ', text)
+        text = re.sub(r'\s+', ' ', text)
+        return text
+    
+    def create_vocabulary(self):
+        document_frequency = {}
+        
+        for doc in self.concatenated_docs.split(' ` '):
+            words_in_doc = set()
+
+            for word in doc.split(' '):
+                if word not in words_in_doc:
+                    document_frequency[word] = document_frequency.get(word, 0) + 1
+                    words_in_doc.add(word)
+
+                if word in self.vocabulary:
+                    self.vocabulary[word] += 1
+                else:
+                    self.vocabulary[word] = 1
+
+        for word, freq in document_frequency.items():
+            self.vocabulary[word] = (self.vocabulary[word], freq)
+
+        return self.vocabulary
