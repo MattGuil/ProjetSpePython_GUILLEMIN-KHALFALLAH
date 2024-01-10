@@ -9,7 +9,7 @@
 2. Déplacez vous dans le dossier ainsi créé sur votre ordinateur.
 
 3. Créez un environnement virtuel python, que nous vous proposons de nommer avec le nom de notre moteur de recherche :
-```python venv khalmin_env```
+```python -m venv khalmin_env```
 
 4. Activez l'environnement virtuel et installez toutes les dépendances du projet en vous servant du fichier requirements.txt :
 ```pip install -r requirements.txt```
