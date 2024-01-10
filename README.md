@@ -14,9 +14,9 @@
 4. Activez l'environnement virtuel et installez toutes les dépendances du projet en vous servant du fichier requirements.txt :
 ```pip install -r requirements.txt```
 
-5. Vous êtes prêt à lancer les différentes version du programme. 
+5. Vous êtes prêt à lancer les différentes versions de l'application.
 
 Pour ce faire :
 - v1 : ```python main.py```
-- v2 : Cliquez sur le bouton Run All dans main.ipynb
+- v2 : Cliquez sur le bouton Run All dans ```main.ipynb``` (Il faut cliquer sur Restart entre chaque recherche)
 - v3 : ```python app_dash.py``` (L'application tourne en localhost http://127.0.0.1:8000/)
