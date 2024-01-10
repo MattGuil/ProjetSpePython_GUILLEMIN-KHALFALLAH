@@ -1,41 +1,22 @@
-# Projet Spécialité Python
-## Matthieu GUILLEMIN - Elyes KHALFALLAH
+# KHALMIN SEARCH ENGINE
+## développé par Matthieu GUILLEMIN et Elyes KHALFALLAH
 
-/!\ A rendre avant le 10 Janvier 2024, 23:59 /!\
+### Notice de lancement
 
+1. Commencez par cloner ce dépot :
+```bash git clone https://github.com/MattGuil/ProjetSpePython_GUILLEMIN-KHALFALLAH.git```
 
+2. Déplacez vous dans le dossier ainsi créé sur votre ordinateur.
 
-#### TODO :
+3. Créez un environnement virtuel python, que nous vous proposons de nommer avec le nom de notre moteur de recherche :
+```bash python venv khalmin_env```
 
-- v1 : TD 3 a 5  - socle de base de l'appli
-- v2 : TD 3 a 7  - moteur de recherche
-- v3 : TD 3 a 10 - interface (sans forcement TD8)
+4. Activez l'environnement virtuel et installez toutes les dépendances du projet en vous servant du fichier requirements.txt :
+```bash pip install -r requirements.txt```
 
-- Rapport :
-  - doit etre rendu en un .pdf inferieur a 5Mo
-  - rappelle la problematique du projet et en donne les specifications
-  - détaille notre analyse du probleme et l'implementation/conception du projet
-  - contient une répartition des taches entre eleves 
-  - contient l'adresse de dépot (publique)
-  - doit etre rendu par les deux étudiants du binome
-  - NE contient PAS de lignes de codes
-  - presenter les tests effectués, une conclusion, une ouverture/des perspectives envisageables
+5. Vous êtes prêt à lancer les différentes version du programme. 
 
-
-Notation : 
-- Fonctionnement du projet (6pts) :
-  - avancement (sans bugs)
-  - améliorations et "plus" apportés au projet (un peu en bonus)
-  - dans le cas ou le code fonctionne pas, des commentaires expliquant pourquoi
-
-- Code (8pts) :
-  - presentation generale du code (indentations, separations de classes, etc)
-  - commentaires
-  - qualité
-
-- Dossier (6pts) :
-  - pertinence choix de classes
-  - qualité interface
-  - mise en avant des infos pertinentes
-
-Lire les remarques complementaires dans le sujet
+Pour ce faire :
+- v1 : ```bash python main.py```
+- v2 : Cliquez sur le bouton Run All dans main.ipynb
+- v3 : ```bash python app_dash.py``` (L'application tourne en localhost http://127.0.0.1:8000/)
