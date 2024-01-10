@@ -11,6 +11,9 @@ import pickle
 import math
 import re
 import pandas as pd
+from scipy.sparse import csr_matrix
+import numpy as np
+import json
 
 from Document import *
 from Author import *
@@ -26,9 +29,12 @@ class Corpus:
         self.naut = 0
         self.docs = []               # liste des différents textes des documents
         self.concatenated_docs = ''  # chaine de caractères qui concatène l'intégralité des textes des documents
-        self.vocabulary = {}
+        self.vocab = {}
         self.docs_bruts = []         # liste de toutes les informations nécessaires pour créer une instance d'un object de classe Document
         self.collection = []
+
+        self.mat_TF = None
+        self.mat_TFxIDF = None
 
     def __repr__(self):
         self.docs = list(self.id2doc.values())
@@ -60,8 +66,8 @@ class Corpus:
                     self.aut2id[aut] = self.naut
                 self.authors[self.aut2id[aut]].add(doc.texte)
         
-        self.ndoc += 1
         self.id2doc[self.ndoc] = doc
+        self.ndoc += 1
 
     def fill(self, subject, nb_articles):
         if os.path.isfile(f"pickles/{subject}.pkl"):
@@ -89,7 +95,7 @@ class Corpus:
         )
 
         # Requête
-        hottest_post = reddit.subreddit(''.join(subject.split())).hot(limit=nb_articles)
+        hottest_post = reddit.subreddit(''.join(subject.split())).hot(limit=nb_articles+1)
 
         # Récupération du texte
         afficher_cles = False
@@ -120,9 +126,17 @@ class Corpus:
 
         # ==== NETTOYAGE ====
 
-        for doc in self.docs:
-                if len(doc) < 20:
-                    self.docs.remove(doc)
+        indices_to_remove = []
+
+        for index, doc in enumerate(self.docs):
+            if len(doc) < 20:
+                indices_to_remove.append(index)
+
+        for index in sorted(indices_to_remove, reverse=True):
+            del self.docs[index]
+            del self.docs_bruts[index]
+
+        print(f"Nombre de docs supprimés : {len(indices_to_remove)}")
 
         # ==== MANIPULATIONS ====
 
@@ -157,54 +171,21 @@ class Corpus:
             doc_instance = DocumentFactory.create_document(nature, doc_info)
             self.collection.append(doc_instance)
 
-
-        # Création de l'index de documents
-        id2doc = {}
-        for i, doc in enumerate(self.collection):
-            id2doc[i] = doc.titre
-
-
-        # ==== DICT AUTEURS ====
-
-        authors = {}
-        aut2id = {}
-        num_auteurs_vus = 0
-
-        # Création de la liste + index des auteurs
         for doc in self.collection:
-            if doc.auteur not in aut2id:
-                num_auteurs_vus += 1
-                authors[num_auteurs_vus] = Author(doc.auteur)
-                aut2id[doc.auteur] = num_auteurs_vus
+            self.add(doc)
 
-            authors[aut2id[doc.auteur]].add(doc.texte)
-
-
-        # ==== CORPUS ====
-
-        corpus = Corpus("Mon corpus")
-
-        for doc in self.collection:
-            corpus.add(doc)
-
-
-        # ==== SAUVEGARDE ====
-
-        with open(f"pickles/{subject}.pkl", "wb") as f:
-            pickle.dump(corpus, f)
-
-        # ==== LECTURE ====
-
-        with open(f"pickles/{subject}.pkl", "rb") as f:
-            corpus = pickle.load(f)
-
-
-        corpus.show(tri="123")
+        self.show(tri="123")
         print("\n\n")
-        print(f"Nombre de documents : {corpus.ndoc}")
-        print(f"Nombre d'auteurs : {corpus.naut}")
+        print(f"Nombre de documents : {self.ndoc}")
+        print(f"Nombre d'auteurs : {self.naut}")
+
+        # Sauvegarde dans un fichier .pkl
+        with open(f"pickles/{subject}.pkl", "wb") as f:
+            pickle.dump(self, f)
 
     def search(self, keyword, context_size=30):
+        for doc in self.docs:
+            print(type(doc))
         if self.concatenated_docs == '':
             self.concatenated_docs = self.nettoyer(' ` '.join(self.docs))
         
@@ -233,27 +214,143 @@ class Corpus:
     def nettoyer(self, text):
         text = text.lower()
         text = text.replace('\n', ' ')
-        text = re.sub(r'[^a-z àáâãäåæçèéêëìíîïðòóôõöøùúûüýÿ`]', ' ', text)
+        text = re.sub(r'[^a-z àáâãäåæçèéêëìíîïðòóôõöøùúûüýÿ`\']', ' ', text)
         text = re.sub(r'\s+', ' ', text)
         return text
     
-    def create_vocabulary(self):
-        document_frequency = {}
-        
-        for doc in self.concatenated_docs.split(' ` '):
-            words_in_doc = set()
+    def create_vocabulary(self, method=1):
+        vocabulary = {}
+        documents = self.concatenated_docs.split('`')
+        documents = [doc.strip() for doc in documents]
+        row_indices = []
+        col_indices = []
+        data = []
 
-            for word in doc.split(' '):
-                if word not in words_in_doc:
-                    document_frequency[word] = document_frequency.get(word, 0) + 1
-                    words_in_doc.add(word)
+        for doc_index, doc in enumerate(documents):
 
-                if word in self.vocabulary:
-                    self.vocabulary[word] += 1
+            for word in sorted(doc.split(' ')):
+                if word in self.vocab:
+                    self.vocab[word] += 1
                 else:
-                    self.vocabulary[word] = 1
+                    self.vocab[word] = 1
 
-        for word, freq in document_frequency.items():
-            self.vocabulary[word] = (self.vocabulary[word], freq)
+                if word not in vocabulary:
+                    vocabulary[word] = len(vocabulary)
 
-        return self.vocabulary
+                word_index = vocabulary[word]
+                row_indices.append(doc_index)
+                col_indices.append(word_index)
+                data.append(doc.split(' ').count(word))
+
+        print('len(documents)')
+        print(len(documents))
+        self.mat_TF = csr_matrix((data, (row_indices, col_indices)), shape=(len(documents), len(vocabulary)))
+
+        document_frequency = (self.mat_TF > 0).sum(axis=0)
+        document_frequency = np.asarray(document_frequency).reshape(-1)
+        
+        for word, index in vocabulary.items():
+            doc_freq = document_frequency[index]
+
+            self.vocab[word] = {
+                'id': index + 1,
+                'occurencies': self.vocab[word],
+                'document frequency': int(doc_freq)
+            }
+
+        with open('./vocab.json', 'w') as file:
+            json.dump(self.vocab, file, indent=4)
+
+        
+        # -- Calcul de la matrice TFxIDF --
+        print()
+        print("documents")
+        print(documents)
+
+        N = len(documents) + 1
+
+        DF = (self.mat_TF > 0).sum(axis=0)
+        IDF = np.log(N / DF)
+
+        print()
+        print('TF')
+        print(self.mat_TF.shape)
+        print(self.mat_TF)
+        print()
+        print('DF')
+        print(DF.shape)
+        print(DF)
+        print()
+        print('IDF')
+        print(IDF.shape)
+        print(IDF)
+
+        IDF_diagonal = np.diag(np.squeeze(np.asarray(IDF)))
+
+        self.mat_TFxIDF = self.mat_TF.dot(IDF_diagonal)
+
+        print()
+        print('IDF SQUEEZED')
+        print(np.squeeze(np.asarray(IDF)))
+        print()
+        print('IDF DIAGONAL')
+        print(IDF_diagonal.shape)
+        print(IDF_diagonal)
+        print()
+        print('TFxIDF')
+        print(self.mat_TFxIDF.shape)
+        print(self.mat_TFxIDF)
+        print()
+        print('VOCAB')
+        print(self.vocab)
+
+    def compute_similarity(self, keywords):
+
+        keywords = keywords.split(',')
+        keywords = [word.strip() for word in keywords]
+
+        # Récupérer les index des mots correspondant aux mots-clés dans le vocabulaire
+        vocab_keys = list(self.vocab.keys())
+        keywords_indices = [vocab_keys.index(word) for word in keywords if word in vocab_keys]
+
+        # Récupérer la matrice TFxIDF correspondant aux mots-clés
+        keywords_matrix = np.zeros(self.mat_TFxIDF.shape)
+        keywords_matrix = np.where(keywords_matrix == 0, 1e-10, keywords_matrix)
+        keywords_matrix[:, keywords_indices] = self.mat_TFxIDF[:, keywords_indices]
+
+        # Calculer la norme des vecteurs de la matrice des mots-clés et de chaque document
+        norm_keywords = np.linalg.norm(keywords_matrix, axis=1)
+        norm_documents = np.linalg.norm(self.mat_TFxIDF, axis=1)
+
+        print()
+        print('norm_keywords')
+        print(norm_keywords)
+
+        print()
+        print('norm_documents')
+        print(norm_documents)
+
+        # Calculer le produit scalaire entre la matrice des mots-clés et chaque document
+        produit_scalaire = np.dot(self.mat_TFxIDF, keywords_matrix.T)
+
+        print()
+        print('PRODUIT SCALAIRE')
+        print(produit_scalaire.shape)
+        print(produit_scalaire)
+
+        # Calculer la similarité cosine
+        similarite = produit_scalaire / (norm_documents[:, np.newaxis] * norm_keywords)
+
+        # Obtenir les indices triés des documents par similarité décroissante
+        indices_tries = np.argsort(similarite[:, 0])[::-1]
+
+        print()
+        print('SIMILARITE')
+        print(similarite)
+        print()
+        print('INDICES TRIES')
+        print(indices_tries)
+        
+        # Afficher les meilleurs résultats
+        for idx in indices_tries:
+            print(f"Document '{self.id2doc[idx]}' - Similarité : {similarite[idx, 0]}")
