@@ -29,7 +29,7 @@ class Corpus:
         self.nom = nom
         self.authors = {}                   # Dictionnaire regroupant tous les auteurs (Author) du corpus
         self.aut2id = {}                    # Dictionnaire associant chaque auteur à son identifiant unique
-        self.id2doc = {}                    # Dictionnaire regroupant tous les documents (Documents) du corpus
+        self.id2doc = {}                    # Dictionnaire regroupant tous les documents (Document) du corpus
         self.ndoc = 0                       # Nombre de documents dans le corpus
         self.naut = 0                       # Nombre d'auteurs dans le corpus
         self.docs = []                      # Liste contenant les titres de tous les documents

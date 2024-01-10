@@ -84,7 +84,7 @@ class ArxivDocument(Document):
         return f"Titre : {self.titre}\nAuteur(s) : {self.auteurs}\nDate : {self.date}\nURL : {self.url}\nTexte : {self.texte}"
     # --
 
-# Classe DocumentFactory
+# Classe statique DocumentFactory
 # Agit comme une fabrique pour créer des instances de RedditDocument ou ArxivDocument
 # en fonction de la nature du document
 class DocumentFactory:
