@@ -9,6 +9,9 @@ class Document:
         self.url = url
         self.texte = texte
 
+    def get_texte(self):
+        return self.texte
+
     def __str__(self):
         return f"Titre : {self.titre}\nAuteur : {self.auteur}\nDate : {self.date}\nURL : {self.url}"
 

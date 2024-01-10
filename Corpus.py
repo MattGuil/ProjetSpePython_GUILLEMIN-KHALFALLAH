@@ -107,7 +107,7 @@ class Corpus:
             if post.selftext != "":
                 pass
 
-            self.docs.append(post.selftext.replace("\n", " "))
+            self.docs.append(post.title.replace("\n", " "))
             self.docs_bruts.append(("Reddit", post))
 
         # ==== ARXIV ====
@@ -121,7 +121,7 @@ class Corpus:
         data = xmltodict.parse(data)["feed"]["entry"]
 
         for entry in data:
-            self.docs.append(entry["summary"].replace("\n", " "))
+            self.docs.append(entry["title"].replace("\n", " "))
             self.docs_bruts.append(("ArXiv", entry))
 
         # ==== NETTOYAGE ====
@@ -179,15 +179,21 @@ class Corpus:
         print(f"Nombre de documents : {self.ndoc}")
         print(f"Nombre d'auteurs : {self.naut}")
 
+        if not os.path.exists('pickles'):
+            os.makedirs('pickles')
+
         # Sauvegarde dans un fichier .pkl
         with open(f"pickles/{subject}.pkl", "wb") as f:
             pickle.dump(self, f)
 
-    def search(self, keyword, context_size=30):
-        for doc in self.docs:
-            print(type(doc))
+    def search(self, keyword, context_size=30):  
         if self.concatenated_docs == '':
-            self.concatenated_docs = self.nettoyer(' ` '.join(self.docs))
+            if type(self.docs[0]) == str:
+                self.concatenated_docs = self.nettoyer(' ` '.join(self.docs))
+            else:
+                for doc in self.docs:
+                    self.concatenated_docs += f"{doc.get_texte()} ` "
+                self.nettoyer(self.concatenated_docs)
         
         pattern = re.compile(fr'\b{re.escape(keyword)}\b', re.IGNORECASE)
         matches = pattern.finditer(self.concatenated_docs)
@@ -341,16 +347,14 @@ class Corpus:
         # Calculer la similarité cosine
         similarite = produit_scalaire / (norm_documents[:, np.newaxis] * norm_keywords)
 
-        # Obtenir les indices triés des documents par similarité décroissante
+        sorted_results = []
         indices_tries = np.argsort(similarite[:, 0])[::-1]
 
-        print()
-        print('SIMILARITE')
-        print(similarite)
-        print()
-        print('INDICES TRIES')
-        print(indices_tries)
-        
-        # Afficher les meilleurs résultats
         for idx in indices_tries:
-            print(f"Document '{self.id2doc[idx]}' - Similarité : {similarite[idx, 0]}")
+            document_info = self.id2doc[idx]
+            similarity = similarite[idx, 0]
+            
+            # Ajouter les informations du document et sa similarité à la liste
+            sorted_results.append((document_info, similarity))
+        
+        return sorted_results

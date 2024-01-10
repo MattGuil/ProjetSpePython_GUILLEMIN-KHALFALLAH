@@ -1,2 +1,4 @@
 __pycache__/
-*.pkl
+khalmin_env/
+docs.txt
+vocab.json
