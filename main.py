@@ -1,3 +1,10 @@
+# Projet Spécialité Python
+
+# Elyes KHALFALLAH
+# Matthieu GUILLEMIN
+
+# v1
+
 import praw
 
 import urllib
@@ -13,23 +20,20 @@ from Corpus import *
 
 subject = "canada"
 
-docs = []           # liste des différents textes des documents
-docs_bruts = []     # liste de toutes les informations nécessaires pour créer une instance d'un object de classe Document
+docs = []
+docs_bruts = []
 
 # ==== REDDIT ====
 
-# Identification
 reddit = praw.Reddit(
     client_id = '-w5bIuuQGmj47u4g_BWjkg',
     client_secret = 'ac-sSsGg9sTsRM3SqFlZN5EjUH-JOQ',
     user_agent = 'R-WebScraping'
 )
 
-# Requête
 limit = 5
 hottest_post = reddit.subreddit(subject).hot(limit=limit+1)
 
-# Récupération du texte
 afficher_cles = False
 for post in hottest_post:
     if afficher_cles:
@@ -57,15 +61,13 @@ for entry in data:
     docs.append(entry["summary"].replace("\n", " "))
     docs_bruts.append(("ArXiv", entry))
 
-# ==== NETTOYAGE ====
+# Nettoyage
 
-'''
 for doc in docs:
     if len(doc) < 20:
         docs.remove(doc)
-'''
 
-# ==== MANIPULATIONS ====
+# Manipulations
 
 collection = []
 
@@ -101,19 +103,14 @@ for nature, doc in docs_bruts:
     collection.append(doc_instance)
 
 
-# Création de l'index de documents
 id2doc = {}
 for i, doc in enumerate(collection):
     id2doc[i] = doc.titre
-
-
-# ==== DICT AUTEURS ====
 
 authors = {}
 aut2id = {}
 num_auteurs_vus = 0
 
-# Création de la liste + index des auteurs
 for doc in collection:
     if doc.auteur not in aut2id:
         num_auteurs_vus += 1
@@ -123,22 +120,20 @@ for doc in collection:
     authors[aut2id[doc.auteur]].add(doc.texte)
 
 
-# ==== CORPUS ====
-
 corpus = Corpus("Mon corpus")
 
 for doc in collection:
     corpus.add(doc)
 
 
-# ==== SAUVEGARDE ====
+# Sauvegarde
 
-with open("projet/corpus.pkl", "wb") as f:
+with open("pickles/corpus.pkl", "wb") as f:
     pickle.dump(corpus, f)
 
 del corpus
 
-with open("projet/corpus.pkl", "rb") as f:
+with open("pickles/corpus.pkl", "rb") as f:
     corpus = pickle.load(f)
 
 corpus.show(tri="123")

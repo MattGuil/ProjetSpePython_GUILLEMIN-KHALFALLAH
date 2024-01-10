@@ -4,9 +4,11 @@ from dash.dependencies import Input, Output
 
 from Corpus import Corpus
 
+# Initialisation de l'application Dash
 app = dash.Dash(__name__)
 app.title = 'KHALMIN SEARCH ENGINE'
 
+# Styles CSS pour l'application
 styles = {
     'body': {
         'fontFamily': 'Arial, sans-serif'
@@ -24,6 +26,7 @@ styles = {
         'flexDirection': 'column',
         'margin': '20px'
     },
+    # Styles pour les champs de saisie et le bouton
     'input_fields': {
         'width': '50%',
         'margin': '10px auto',
@@ -42,9 +45,11 @@ styles = {
     }
 }
 
+# Création de la mise en page de l'application
 app.layout = html.Div([
     html.H1('KHALMIN SEARCH ENGINE', id="title", style=styles['title']),
     html.Div([
+        # Champs de saisie du sujet du corpus
         html.Div([
             html.Label('Sujet du Corpus', className='label'),
             dcc.Input(
@@ -55,6 +60,7 @@ app.layout = html.Div([
                 style=styles['input_fields']
             ),
         ], style=styles['input-div']),
+        # Champs de saisie des mots clés
         html.Div([
             html.Label('Mots clés', className='label'),
             dcc.Input(
@@ -65,6 +71,7 @@ app.layout = html.Div([
                 style=styles['input_fields']
             ),
         ], style=styles['input-div']),
+        # Slider pour sélectionner le nombre d'articles
         html.Div([
             html.Label('Nombre d\'articles', className='label'),
             html.Div(
@@ -79,23 +86,34 @@ app.layout = html.Div([
                 style=styles['input_fields']
             ),
         ], style=styles['input-div']),
+        # Bouton pour lancer la recherche
         html.Button('Lancer la recherche', id='button', style=styles['button']),
     ], id='form', style=styles['form']),
+    # Div pour afficher les résultats de la recherche
     html.Div(id='output', style=styles['output'])
 ], style=styles['body'])
 
+# Callback pour mettre à jour les résultats de la recherche
 @app.callback(
     Output('output', 'children'),
     [Input('button', 'n_clicks')],
+    Input('subject-input', 'value'),
+    Input('keywords-input', 'value'),
+    Input('narticles-slider', 'value'),
     prevent_initial_call=True
 )
-def update_output(n_clicks):
-    if n_clicks:
-        subject_value = app.layout['subject-input'].value
-        keywords_value = app.layout['keywords-input'].value
-        narticles_value = app.layout['narticles-slider'].value
-        
-        if subject_value and keywords_value and narticles_value:
+def update_output(n_clicks, subject_value, keywords_value, narticles_value):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        # Aucun déclencheur, retourner une valeur par défaut ou un message
+        return html.Div("Cliquez sur le bouton pour afficher les résultats.")
+    else:
+        # Une entrée a été déclenchée, récupérez les valeurs des inputs
+        input_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        if input_id == 'button' and n_clicks:
+            print(subject_value)
+            print(keywords_value)
+            print(narticles_value)
             corpus = Corpus(subject_value)
             corpus.fill(subject_value.lower(), narticles_value)
             corpus.search(subject_value)
@@ -104,6 +122,7 @@ def update_output(n_clicks):
             
             result_display = []
 
+            # Création des éléments HTML pour afficher les résultats
             for result in similarity_results:
                 if result[0].origine == "Reddit":
                     result_display.append(
@@ -132,4 +151,5 @@ def update_output(n_clicks):
             return result_display
 
 if __name__ == '__main__':
+    # Lancement de l'application
     app.run_server(debug=True, port=8000, threaded=True)
