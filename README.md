@@ -1,5 +1,5 @@
 # Projet Spécialité Python
-## Matthieu GUILLEMIN - Elyes KHAFALLAH
+## Matthieu GUILLEMIN - Elyes KHALFALLAH
 
 /!\ A rendre avant le 10 Janvier 2024, 23:59 /!\
 
